@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PREST Calculator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.css">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px;
+    background: linear-gradient(to bottom, #e3f2fd, #90caf9);
+    color: #0d47a1;
+  }
+  .frame {
+    background: #ffffff;
+    border: 2px solid #0d47a1;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    margin-bottom: 20px;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+    color: black;
+  }
+  .frame:first-child {
+    background: #cfe8fc;
+    text-align: center;
+  }
+  .title {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  .subtitle {
+    font-size: 14px;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  .input {
+    text-align: left;
+  }
+  input[type="checkbox"] {
+    margin-right: 5px;
+  }
+  .button {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #0d47a1;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+  }
+  .button:hover {
+    background-color: #1976d2;
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="title">PREST Calculator</div>
+  <div class="subtitle">Predictive Response Evaluation of Steroid in TED</div>
+</div>
+<div class="frame input">
+  <h3>Medical history and laboratory data</h3>
+  <label><input type="checkbox" id="TSHRab"> TSH receptor Ab ≥ 4.59 IU/L</label><br>
+  <label><input type="checkbox" id="TSI"> Thyroid Stimulating Immunoglobulin ≥ 1.75 IU/L</label><br>
+  <label><input type="checkbox" id="CAS"> Clinical Activity Score ≥ 3</label><br>
+  <label><input type="checkbox" id="Exophthalmus"> Exophthalmus ≥ 21 mm</label><br>
+  <button class="button" onclick="calculateScore()">Calculate Score</button>
+</div>
+<div class="frame output">
+  <h3>PREST score</h3>
+  <div id="result">Score: 0</div>
+  <canvas id="responsePlot"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  var responsivenessRates = [100, 100, 94.4, 77.8, 100, 83.3, 66.7, 50.0, 40.0];
+  var scores = ['0', '1', '2', '3', '4', '5', '6', '7', '8'];
+
+  function calculateScore() {
+    var score = 0;
+    if (document.getElementById('TSHRab').checked) score += 3;
+    if (document.getElementById('TSI').checked) score += 1;
+    if (document.getElementById('CAS').checked) score += 2;
+    if (document.getElementById('Exophthalmus').checked) score += 2;
+
+    if (score > 8) score = 8; // Ensure score is within the expected range
+    document.getElementById('result').innerHTML = 'Score: ' + score;
+    updatePlot();
+  }
+
+  function updatePlot() {
+    var ctx = document.getElementById('responsePlot').getContext('2d');
+    if (window.bar != undefined) 
+      window.bar.destroy(); 
+    
+    var gradient = ctx.createLinearGradient(0, 0, 400, 0);
+    gradient.addColorStop(0, 'rgba(25, 118, 210, 0.8)');
+    gradient.addColorStop(1, 'rgba(144, 202, 249, 0.8)');
+
+    window.bar = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: scores,
+        datasets: [{
+          label: 'Responsiveness (%)',
+          data: responsivenessRates,
+          backgroundColor: gradient,
+          borderColor: 'rgba(25, 118, 210, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            title: {
+              display: true,
+              text: 'Percentage'
+            }
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                var value = context.raw;
+                var lowerBound = value > 90 ? 90 : Math.floor(value / 10) * 10;
+                var upperBound = value > 90 ? 100 : lowerBound + 10;
+                return 'Responsiveness: ' + lowerBound + '-' + upperBound + '%';
+              }
+            }
+          },
+          legend: {
+            display: true
+          }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
