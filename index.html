@@ -26,7 +26,6 @@
   .title-frame h1{ margin:0; font-size: 22px; font-weight: 700; letter-spacing:.2px; }
   .subtitle{margin-top:6px; color:var(--muted); font-size:14px;}
 
-  .io-grid{ display:grid; grid-template-columns: 1fr; gap:18px; }
   .panel{ padding: 22px 24px; }
   .panel h2{ margin-top:0; margin-bottom:14px; font-size:16px; font-weight:700; color:var(--accent); }
 
@@ -54,6 +53,69 @@
   .btn-primary{ appearance:none; border:0; border-radius: 12px; background:var(--accent); color:#fff; padding:12px 18px; font-weight:700; cursor:pointer; box-shadow: var(--shadow); }
   .btn-primary:hover{filter:brightness(1.02);}
   .btn-primary:active{transform:translateY(1px);}
+
+  /* Risk + probability */
+  .risk-prob-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-top:12px;
+  }
+  .risk-card, .prob-card{
+    flex:1 1 260px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:#f9fafc;
+    padding:12px 14px;
+  }
+  .card-title{
+    font-size:13px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .risk-pill{
+    display:inline-flex;
+    align-items:center;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .risk-pill.low{
+    background:rgba(18,184,134,0.08);
+    color:#087f5b;
+  }
+  .risk-pill.intermediate{
+    background:rgba(255,176,0,0.12);
+    color:#ad6800;
+  }
+  .risk-pill.high{
+    background:rgba(230,82,82,0.12);
+    color:#c92a2a;
+  }
+  .risk-points{
+    font-size:13px;
+    color:var(--ink);
+    margin:0;
+    padding-left:16px;
+  }
+  .risk-points li{ margin-bottom:2px; }
+
+  .prob-value{
+    font-size:20px;
+    font-weight:700;
+    color:#1b1f24;
+    margin-bottom:4px;
+  }
+  .prob-caption{
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.5;
+  }
 
   table{width:100%; border-collapse:collapse; border:1px solid var(--border); border-radius:12px; overflow:hidden;}
   thead th{background:#f1f4fb; color:#24324a; font-size:13px; letter-spacing:.2px; text-transform:uppercase;}
@@ -151,6 +213,27 @@
           </div>
         </div>
       </div>
+
+      <!-- Risk + probability -->
+      <div class="risk-prob-grid">
+        <div class="risk-card">
+          <div class="card-title">Risk stratification</div>
+          <div id="riskPill" class="risk-pill low">Low risk (PREST 0–4)</div>
+          <ul id="riskDetails" class="risk-points">
+            <li>Non-response rate: &lt;10%</li>
+            <li>Standard IVMP protocol</li>
+            <li>Routine monitoring</li>
+          </ul>
+        </div>
+
+        <div class="prob-card">
+          <div class="card-title">Calibrated probability of non-response</div>
+          <div id="nonRespProb" class="prob-value">0.0%</div>
+          <div class="prob-caption">
+            Probability (non-response) = 1 / (1 + exp( −(−2.86 + 0.51 × PREST_Score) ))
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Output frame -->
@@ -231,6 +314,57 @@
     btnYes.addEventListener("click", ()=> setActive(1));
   });
 
+  // Risk + probability helpers
+  function updateRisk(score){
+    const pill = document.getElementById("riskPill");
+    const details = document.getElementById("riskDetails");
+
+    let label = "";
+    let rangeText = "";
+    let cls = "";
+
+    if(score <= 4){
+      label = "Low risk";
+      rangeText = " (PREST 0–4)";
+      cls = "low";
+      details.innerHTML = `
+        <li>Non-response rate: &lt;10%</li>
+        <li>Standard IVMP protocol</li>
+        <li>Routine monitoring</li>
+      `;
+    } else if(score <= 6){
+      label = "Intermediate risk";
+      rangeText = " (PREST 5–6)";
+      cls = "intermediate";
+      details.innerHTML = `
+        <li>Non-response rate: 25–35%</li>
+        <li>IVMP with close monitoring</li>
+        <li>Early assessment at 4 weeks</li>
+      `;
+    } else{
+      label = "High risk";
+      rangeText = " (PREST ≥7)";
+      cls = "high";
+      details.innerHTML = `
+        <li>Non-response rate: &gt;55%</li>
+        <li>Consider alternative therapy</li>
+        <li>Radiotherapy, biologics, or combination</li>
+      `;
+    }
+
+    pill.textContent = label + rangeText;
+    pill.classList.remove("low","intermediate","high");
+    pill.classList.add(cls);
+  }
+
+  function updateProbability(score){
+    const el = document.getElementById("nonRespProb");
+    const logit = -2.86 + 0.51 * score;
+    const p = 1 / (1 + Math.exp(-logit));
+    const pct = (p * 100).toFixed(1);
+    el.textContent = `${pct}%`;
+  }
+
   // Calculate PREST
   function calcPrest(){
     const score =
@@ -240,6 +374,8 @@
       state.EXO*WEIGHTS.EXO;
 
     document.getElementById("prestScore").textContent = String(score);
+    updateRisk(score);
+    updateProbability(score);
     highlightRow(score);
     highlightBar(score);
   }
@@ -359,6 +495,9 @@
 
   // Build Chart.js once
   buildChart();
+
+  // Initial calculation for default state (score 0)
+  calcPrest();
 
   // Rebuild gradient on resize for crispness
   window.addEventListener("resize", ()=>{
